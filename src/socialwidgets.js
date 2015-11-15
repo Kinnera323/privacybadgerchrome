@@ -52,7 +52,6 @@ var REPLACEMENT_BUTTONS_FOLDER_PATH = chrome.extension.getURL("skin/socialwidget
  * The absolute path to the stylesheet that is injected into every page.
  */
 var CONTENT_SCRIPT_STYLESHEET_PATH = chrome.extension.getURL("skin/socialwidgets.css");
-
 /**
  * Social widget tracker data, read from file.
  */
@@ -64,6 +63,7 @@ var trackerInfo;
 function initialize() {
 	// Get tracker info and check for initial blocks (that happened
 	// before content script was attached)
+
 	getTrackerData(function (trackers, trackerButtonsToReplace) {
 
 		trackerInfo = trackers;
@@ -296,7 +296,7 @@ function replaceIndividualButton(tracker) {
 
   for (var i = 0; i < buttonsToReplace.length; i++) {
     var buttonToReplace = buttonsToReplace[i];
-    console.log("Replacing social widget for " + tracker.name);
+    //Utils.ConsoleLogging(["Replacing social widget for "]);
 
     var button =
       createReplacementButtonImage(tracker);

@@ -1,5 +1,5 @@
 /**
-* This is a dictionary containing all of the domains that user may want to 
+* This is a dictionary containing all of the domains that user may want to
 * make an exception for. The key is the url to trigger a popup and
 * the value is an array where index 0 is the domain to whitelist if the user wishes to login.
 * Index 1 is the English name of the service.
@@ -20,7 +20,7 @@ var DomainExceptions = {
    * @param {Function} callback Callback to call after update. Optional
    */
   updateList: function(callback){
-    console.log('updating domain exception list');
+    Utils.ConsoleLogging(['updating domain exception list']);
     //update object from local storage
     chrome.storage.local.get('domainExceptionList', function(l){
       if(l){ DomainExceptions.list = l; }
@@ -36,7 +36,7 @@ var DomainExceptions = {
       var l = JSON.parse(msg);
       //update local storage
       chrome.storage.local.set({domainExceptionList: l});
-         
+
       //update local object
       DomainExceptions.list = l;
       if(typeof callback === "function"){callback()}

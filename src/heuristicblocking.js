@@ -62,7 +62,7 @@ chrome.storage.local.get('pbdata', function(items) {
     var randId = Math.floor(Math.random()*16777215).toString(16);
     uniqueId = randId;
     chrome.storage.local.set({'pbdata':randId}, function() {
-      console.log("setting local id to " + uniqueId);
+      Utils.ConsoleLogging(["setting local id to ", uniqueId]);
     });
   }
 });
@@ -80,9 +80,9 @@ var sendXHR = function(params) {
   xhr.onreadystatechange = function() {
     if (xhr.readyState == 4) {
       if (xhr.status == 200){
-        console.log("Successfully submitted params: " + params);
+        Utils.ConsoleLogging(["Successfully submitted params: ", params]);
       } else {
-        console.log("Error submitting params: " + params);
+        Utils.ConsoleLogging(["Error submitting params:", params]);
       }
     }
   }
@@ -110,7 +110,7 @@ var sendTestingData = function() {
     reqParams.push("id="+uniqueId);
     var params = reqParams.join("&");
     sendXHR(params);
-    console.log("With id " + uniqueId + ", Request to " + origin + ", seen on " + httpRequestPrevalence + " third-party origins, sent cookies on " + cookieSentPrevalence + ", set cookies on " + cookieSetPrevalence);
+    Utils.ConsoleLogging(["With id ", uniqueId , ", Request to " , origin , ", seen on " , httpRequestPrevalence , " third-party origins, sent cookies on " , cookieSentPrevalence , ", set cookies on " , cookieSetPrevalence]);
 }
 
 /**
@@ -133,7 +133,7 @@ var needToSendOrigin = function(origin, httpRequestPrevalence) {
   }
   var diff_minutes = (currentTime - lastSentXhr[origin]) / (1000 * 60);
   if (diff_minutes > numMinutesToWait) {
-    console.log("Last submitted " + origin + " " + diff_minutes + " minutes ago. Submitting again...");
+    Utils.ConsoleLogging(["Last submitted " , origin , diff_minutes , " minutes ago. Submitting again..."]);
     lastSentXhr[origin] = currentTime;
     return true;
   }
@@ -176,7 +176,7 @@ function getDomainFromFilter(filter){
 var blacklistOrigin = function(origin, fqdn) {
   // Heuristic subscription
   if (!("frequencyHeuristic" in FilterStorage.knownSubscriptions)) {
-    console.log("Error. Could not blacklist origin because no heuristic subscription found");
+    Utils.ConsoleLogging(["Error. Could not blacklist origin because no heuristic subscription found"]);
     return;
   }
 
@@ -184,24 +184,24 @@ var blacklistOrigin = function(origin, fqdn) {
   if(!BlockedDomainList.hasDomain(fqdn)){
     checkPrivacyBadgerPolicy(fqdn, function(success){
       if(success){
-        console.log('adding', fqdn, 'to user whitelist due to badgerpolicy.txt');
+        Utils.ConsoleLogging(['adding', fqdn, 'to user whitelist due to badgerpolicy.txt']);
         unblockOrigin(fqdn);
       } else {
         BlockedDomainList.addDomain(fqdn);
         addFiltersFromWhitelistToCookieblock(origin)
         // this variable seems a little unnessecary...
         var heuristicSubscription = FilterStorage.knownSubscriptions["frequencyHeuristic"];
-        // Create an ABP filter to block this origin 
+        // Create an ABP filter to block this origin
         var filter = this.Filter.fromText("||" + origin + "^$third-party");
         filter.disabled = false;
         FilterStorage.addFilter(filter, heuristicSubscription);
       }
     });
-  }  
+  }
 };
 
 
-// This maps cookies to a rough estimate of how many bits of 
+// This maps cookies to a rough estimate of how many bits of
 // identifying info we might be letting past by allowing them.
 // (map values to lower case before using)
 // We need something better than this eventually, informed by more real world data!
@@ -446,8 +446,8 @@ var extractCookieString = function(details) {
   } else if(details.responseHeaders) {
     var headers = details.responseHeaders;
   } else {
-    console.log("A request was made with no headers! Crazy!");
-    console.log(details);
+    Utils.ConsoleLogging(["A request was made with no headers! Crazy!"]);
+    Utils.ConsoleLogging([details]);
     return false;
   }
 
@@ -494,11 +494,11 @@ var hasSupercookieTracking = function(details, origin) {
    */
   var frameData = getFrameData(details.tabId, details.frameId);
   if (frameData){
-    // console.log("hasSupercookieTracking (frameData)", frameData.superCookie, origin, details.tabId, details.frameId);
+    // Utils.ConsoleLogging(["hasSupercookieTracking (frameData)", frameData.superCookie, origin, details.tabId, details.frameId]);
     return frameData.superCookie;
   }else{ // Check localStorage if we can't find the frame in frameData
     var supercookieDomains = Utils.getSupercookieDomains();
-    // console.log("hasSupercookieTracking (frameData)", supercookieDomains[origin], origin, details.tabId, details.frameId);
+    // Utils.ConsoleLogging(["hasSupercookieTracking (frameData)", supercookieDomains[origin], origin, details.tabId, details.frameId]);
     return supercookieDomains[origin];
   }
 };
@@ -516,7 +516,7 @@ var hasCookieTracking = function(details, origin) {
 
   var cookies = extractCookieString(details);
   if (!cookies) {
-    //console.log(details);
+    //Utils.ConsoleLogging([details]);
     return false;
   }
   cookies = cookies.split(";");
@@ -539,16 +539,16 @@ var hasCookieTracking = function(details, origin) {
     }
   }
   if (hasCookies) {
-     console.log("All cookies for " + origin + " deemed low entropy...");
+     Utils.ConsoleLogging(["All cookies for " , origin , " deemed low entropy..."]);
      for (var n = 0; n < cookies.length; n++) {
-        console.log("    " + cookies[n]);
+        Utils.ConsoleLogging("    " + cookies[n]);
      }
      if (estimatedEntropy > MAX_COOKIE_ENTROPY) {
-       console.log("But total estimated entropy is " + estimatedEntropy + " bits, so blocking");
+       Utils.ConsoleLogging(["But total estimated entropy is " , estimatedEntropy , " bits, so blocking"]);
        return true;
      }
   } else {
-    console.log(origin, "has no cookies!");
+    Utils.ConsoleLogging([origin, "has no cookies!"]);
   }
   return false;
 };
@@ -564,17 +564,17 @@ var heuristicBlockingAccounting = function(details) {
   if(details.tabId < 0){
     return { };
   }
- 
+
 
   var fqdn = new URI(details.url).host;
   var origin = getBaseDomain(fqdn);
 
   var action = activeMatchers.getAction(details.tabId, fqdn);
-  if(action && action != "noaction"){ console.log("action for", fqdn, action); return {}; }
-  
+  if(action && action != "noaction"){ Utils.ConsoleLogging(["action for", fqdn, action]); return {}; }
+
   // Save the origin associated with the tab if this is a main window request
   if(details.type == "main_frame") {
-    //console.log("Origin: " + origin + "\tURL: " + details.url);
+    //Utils.ConsoleLogging(["Origin: " , origin , "\tURL: " , details.url]);
     tabOrigins[details.tabId] = origin;
     return { };
   }
@@ -612,13 +612,13 @@ function recordPrevalence(fqdn, origin, tabOrigin) {
 
   // cause the options page to refresh
   FilterNotifier.triggerListeners("load");
-  
+
   // Blocking based on outbound cookies
   var httpRequestPrevalence = Object.keys(seen[origin]).length;
 
   //block the origin if it has been seen on multiple first party domains
   if (httpRequestPrevalence >= prevalenceThreshold) {
-    console.log('blacklisting origin', fqdn);
+    Utils.ConsoleLogging(['blacklisting origin', fqdn]);
     blacklistOrigin(origin, fqdn);
   }
 }
@@ -648,4 +648,3 @@ chrome.webRequest.onResponseStarted.addListener(function(details) {
 },
 {urls: ["<all_urls>"]},
 ["responseHeaders"]);
-

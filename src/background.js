@@ -1,7 +1,7 @@
 /*
  * This file is part of Privacy Badger <https://www.eff.org/privacybadger>
  * Copyright (C) 2014 Electronic Frontier Foundation
- * Derived from Adblock Plus 
+ * Derived from Adblock Plus
  * Copyright (C) 2006-2013 Eyeo GmbH
  *
  * Privacy Badger is free software: you can redistribute it and/or modify
@@ -36,6 +36,9 @@
 
 if (!("socialWidgetReplacementEnabled" in localStorage)){
   localStorage.socialWidgetReplacementEnabled = "true";
+}
+if (!("ConsoleLoggingEnabled" in localStorage)){
+  localStorage.ConsoleLoggingEnabled = "false";
 }
 
 with(require("filterClasses")) {
@@ -114,27 +117,6 @@ function migrateVersion(prevVersion,currentVersion){
   updateTabList();
   migrateBlockedDomains();
   migrateCookieBlockList();
-  migratedisabledSites();
-}
-
-/** 
- * updates disabledSites variable as an Object and write back to localStorage 
- */
-function migratedisabledSites(){
-  var sites = JSON.parse(localStorage.getItem("disabledSites"));
-  if (sites && Object.keys(sites).length > 0){
-    return;
-  }
-  chrome.storage.local.get("disabledSites", function(items){
-    if(chrome.runtime.lastError || !items.disabledSites){
-      return;
-    }
-    var disabledObject = new Object();
-    for(var i = 0; i < items.length; i++){
-      disabledObject[items[i]] = true;
-    }
-    localStorage.setItem("disabledSites", JSON.stringify(disabledObject));
-  });
 }
 
 /**
@@ -235,7 +217,7 @@ function removeFilter(subscriptionName, filterName){
       break;
     }
   }
-  console.log('REMOVING FILTER', filter, subscription);
+  Utils.ConsoleLogging(['REMOVING FILTER', filter, subscription]);
   FilterStorage.removeFilter(filter,subscription);
 }
 
@@ -281,9 +263,9 @@ function changePrivacySettings() {
     }
   });
 
-  console.log("Turning off alternate Error pages");
+  Utils.ConsoleLogging(["Turning off alternate Error pages"]);
   chrome.privacy.services.alternateErrorPagesEnabled.set({'value': false, 'scope': 'regular'});
-  console.log("Turning off hyperlink auditing");
+  Utils.ConsoleLogging(["Turning off hyperlink auditing"]);
   chrome.privacy.websites.hyperlinkAuditingEnabled.set({'value': false, 'scope': 'regular'});
 }
 
@@ -317,7 +299,7 @@ function addSubscription(prevVersion) {
       Synchronizer.execute(EFFsubscription, false, false, true);
     }
   } catch (e) {
-    console.log("Could not add EFF whitelist!");
+    Utile.ConsoleLogging(["Could not add EFF whitelist!"]);
   }
 
   // Add frequencyHeuristic Subscription
@@ -336,7 +318,7 @@ function addSubscription(prevVersion) {
   var userGreen = new SpecialSubscription("userGreen", "userGreen");
   FilterStorage.addSubscription(userGreen);
 
-  // Add a permanent store for seen third parties 
+  // Add a permanent store for seen third parties
   // TODO: Does this go away when the extension is updated?
   var seenThird = JSON.parse(localStorage.getItem("seenThirdParties"));
   if (!seenThird){
@@ -349,8 +331,8 @@ function addSubscription(prevVersion) {
     localStorage.setItem("supercookieDomains", JSON.stringify({}));
   }
 
-  // Add a permanent store for blocked domains to recheck DNT compliance 
-  // TODO: storing this in localStorage makes it synchronous, but we might 
+  // Add a permanent store for blocked domains to recheck DNT compliance
+  // TODO: storing this in localStorage makes it synchronous, but we might
   // want the speed up of async later if we want to deal with promises
   var blockedDomains = JSON.parse(localStorage.getItem("blockeddomainslist"));
   if (!blockedDomains){
@@ -362,7 +344,7 @@ function addSubscription(prevVersion) {
   }
 
   function notifyUser() {
-    console.log("Calling firstRun page");
+    Utils.ConsoleLogging(["Calling firstRun page"]);
     chrome.tabs.create({
       url: chrome.extension.getURL("/skin/firstRun.html")
     });
@@ -640,7 +622,7 @@ recheckDNTPolicyForBlockedDomains();
 function checkForDNTPolicy(domain){
   checkPrivacyBadgerPolicy(domain, function(success){
     if(success){
-      console.log('adding', domain, 'to user whitelist due to badgerpolicy.txt');
+      Utils.ConsoleLogging(['adding', domain, 'to user whitelist due to badgerpolicy.txt']);
       unblockOrigin(domain);
     }
   });
@@ -657,7 +639,7 @@ var checkPrivacyBadgerPolicy = function(origin, callback){
   var url = "https://" + origin + "/.well-known/dnt-policy.txt";
 
   if(!privacyHashesDoExist()){
-    console.log('not checking for privacy policy because there are no acceptable hashes!');
+    Utils.ConsoleLogging(['not checking for privacy policy because there are no acceptable hashes!']);
     callback(successStatus);
     return;
   }
@@ -733,22 +715,22 @@ function saveAction(userAction, origin, target) {
   if (target) {
     var filter = Filter.fromText("@@||" + origin + "^$third-party,domain=" + target);
     FilterStorage.addFilter(filter, FilterStorage.knownSubscriptions[allUserActions[userAction]]);
-    console.log("Finished saving action " + userAction + " for " + origin + "on" + target);
+    Utils.ConsoleLogging(['Finished saving action',userAction,'for',origin,'on',target]);
     return true;
-  } 
+  }
 
   // If there is no target proceed as normal
   for (var action in allUserActions) {
     var filter = Filter.fromText("||" + origin + "^$third-party");
     if (action == userAction) {
-      console.log('adding filter', filter, 'to', action);
+      Utils.ConsoleLogging(['adding filter', filter, 'to', action]);
       FilterStorage.addFilter(filter, FilterStorage.knownSubscriptions[allUserActions[action]]);
     } else {
-      console.log('removing filter', filter, 'from', action);
+      Utils.ConsoleLogging(['removing filter', filter, 'from', action]);
       FilterStorage.removeFilter(filter, FilterStorage.knownSubscriptions[allUserActions[action]]);
     }
   }
-  console.log("Finished saving action " + userAction + " for " + origin);
+  Utils.ConsoleLogging(["Finished saving action " + userAction + " for " + origin]);
 
   // TODO: right now we don't determine whether a reload is needed
   return true;
@@ -804,12 +786,29 @@ function activelyBlockedOriginCount(tabId){
     }, 0);
 }
 
+/**
+ * Counts total blocked trackers and blocked cookies trackers
+ *
+ * @param tabId Tab ID to count for
+ * @returns {Integer} The sum of blocked trackers and cookie blocked trackers
+ */
+function blockedTrackerCount(tabId){
+  return getAllOriginsForTab(tabId)
+    .reduce(function(memo,origin){
+      var action = getAction(tabId,origin);
+      if(action && (action == "userblock" || action == "block" || action == "cookieblock" || action == "usercookieblock")){
+        memo+=1;
+      }
+      return memo;
+    }, 0);
+}
+
 function setTrackingFlag(tabId,fqdn){
   tabData[tabId].trackers[fqdn] = true;
 }
 
 function originHasTracking(tabId,fqdn){
-  return tabData[tabId] && 
+  return tabData[tabId] &&
     tabData[tabId].trackers &&
     !!tabData[tabId].trackers[fqdn];
 }
@@ -835,7 +834,7 @@ function userConfiguredOriginCount(tabId){
  * @param {Integer} tabId chrome tab id
  */
 function updateBadge(tabId){
-  var numBlocked = blockedOriginCount(tabId);
+  var numBlocked = blockedTrackerCount(tabId);
   if(numBlocked === 0){
     chrome.browserAction.setBadgeBackgroundColor({tabId: tabId, color: "#00ff00"});
   } else {
@@ -881,10 +880,10 @@ chrome.webRequest.onBeforeRequest.addListener(updateCount, {urls: ["http://*/*",
 
 
 /**
-* Populate tabs object with currently open tabs when extension is updated or installed. 
+* Populate tabs object with currently open tabs when extension is updated or installed.
 */
 function updateTabList(){
-  console.log('update tabs!');
+  Utils.ConsoleLogging(['update tabs!']);
   // Initialize the tabData/frames object if it is falsey
   tabData = tabData || {};
   chrome.tabs.query({currentWindow: true, status: 'complete'}, function(tabs){
@@ -911,7 +910,7 @@ function updateTabList(){
 /**
  * Decide what the action would presumably be for an origin
  * used to determine where the slider should go when the undo button
- * is clicked. 
+ * is clicked.
  *
  * @param string origin the domain to guess the action for
  */

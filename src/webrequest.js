@@ -3,7 +3,7 @@
  * This file is part of Privacy Badger <https://www.eff.org/privacybadger>
  * Copyright (C) 2014 Electronic Frontier Foundation
  *
- * Derived from Adblock Plus 
+ * Derived from Adblock Plus
  * Copyright (C) 2006-2013 Eyeo GmbH
  *
  * Derived from Chameleon <https://github.com/ghostwords/chameleon>
@@ -92,7 +92,7 @@ for (var i = 0; i < imports.length; i++){
 }
 var temporarySocialWidgetUnblock = {};
 var handlerBehaviorChangedQuota = chrome.webRequest.MAX_HANDLER_BEHAVIOR_CHANGED_CALLS_PER_10_MINUTES;
-
+var Utils = require("utils").Utils;
 /* Event Listeners */
 chrome.webRequest.onBeforeRequest.addListener(onBeforeRequest, {urls: ["http://*/*", "https://*/*"]}, ["blocking"]);
 chrome.webRequest.onBeforeSendHeaders.addListener(onBeforeSendHeaders, {urls: ["http://*/*", "https://*/*"]}, ["requestHeaders", "blocking"]);
@@ -109,12 +109,12 @@ FilterNotifier.addListener(onFilterNotifier);
  * @param {Integer} tabId Id of the tab
  */
 function onTabRemoved(tabId){
-  console.log('tab removed!', tabId);
+  Utils.ConsoleLogging(['tab removed!', tabId]);
   forgetTab(tabId);
 }
 
 //function onTabUpdated(tabId, changeInfo, tab){
-//  console.log('tab updated', tab);
+//  Utils.ConsoleLogging(['tab updated', tab]);
 //  if (changeInfo.status == "loading" && changeInfo.url != undefined){
 //    forgetTab(tabId);
 //  }
@@ -188,8 +188,8 @@ function onBeforeRequest(details){
     var supercookieDomains = Utils.getSupercookieDomains();
     var origin = getBaseDomain(extractHostFromURL(details.url));
     frameData.superCookie = supercookieDomains[origin] ? true : false;
-    //console.log("onBeforeRequest: read superCookie state from localstorage for",
-    //    origin, frameData.superCookie, details.tabId, details.frameId);
+    //Utils.ConsoleLogging(["onBeforeRequest: read superCookie state from localstorage for",
+    //    origin, frameData.superCookie, details.tabId, details.frameId]);
   }
   var requestAction = checkAction(details.tabId, details.url, false, details.frameId);
   if (requestAction && Utils.isPrivacyBadgerEnabled(getHostForTab(details.tabId))) {
@@ -197,7 +197,7 @@ function onBeforeRequest(details){
     if(requestAction == "block" || requestAction == "cookieblock"){
       BlockedDomainList.addDomain(extractHostFromURL(details.url));
 
-      //if settings for this domain are still controlled by badger and it is in 
+      //if settings for this domain are still controlled by badger and it is in
       //the list of domain exceptions ask the user if they would like to unblock.
       if(requestAction.indexOf('user') < 0){
         var whitelistAry = DomainExceptions.getWhitelistForPath(details.url);
@@ -233,7 +233,7 @@ function getHostForTab(tabId){
     return;
   }
   if (_isTabAnExtension(tabId)) {
-    // If the tab is an extension get the url of the first frame for its implied URL 
+    // If the tab is an extension get the url of the first frame for its implied URL
     // since the url of frame 0 will be the hash of the extension key
     mainFrameIdx = Object.keys(tabData[tabId].frames)[1] || 0;
   }
@@ -261,7 +261,7 @@ function onBeforeSendHeaders(details) {
 
   var requestAction = checkAction(details.tabId, details.url, false, details.frameId);
   if (requestAction && Utils.isPrivacyBadgerEnabled(getHostForTab(details.tabId))) {
-    
+
     if (requestAction == "cookieblock" || requestAction == "usercookieblock") {
       var newHeaders = details.requestHeaders.filter(function(header) {
         return (header.name.toLowerCase() != "cookie" && header.name.toLowerCase() != "referer");
@@ -270,7 +270,7 @@ function onBeforeSendHeaders(details) {
       return {requestHeaders: newHeaders};
     }
   }
-  
+
   // Still sending Do Not Track even if HTTP and cookie blocking are disabled
   details.requestHeaders.push({name: "DNT", value: "1"});
   return {requestHeaders: details.requestHeaders};
@@ -350,14 +350,14 @@ function recordSuperCookie(sender, msg) {
   // keep frame's supercookie state in frameData for faster lookups
   var frameData = getFrameData(sender.tab.id, sender.frameId);
   if (frameData){
-    // console.log("Adding", frameOrigin, "to supercookieDomains (frameData), found on", pageHost);
+    // Utils.ConsoleLogging(["Adding", frameOrigin, "to supercookieDomains (frameData), found on", pageHost]);
     frameData.superCookie = true;
   }
   // now add the finding to localStorage for persistence
   var supercookieDomains = Utils.getSupercookieDomains();
   // We could store the type of supercookie once we start to check multiple storage vectors
   // Could be useful for debugging & bookkeeping.
-  //console.log("Adding", frameOrigin, "to supercookieDomains (localStorage), found on", pageHost);
+  //Utils.ConsoleLogging(["Adding", frameOrigin, "to supercookieDomains (localStorage), found on", pageHost]);
   supercookieDomains[frameOrigin] = true;
   localStorage.setItem("supercookieDomains", JSON.stringify(supercookieDomains));
 }
@@ -470,7 +470,7 @@ function getFrameUrl(tabId, frameId) {
  * @param {Integer} tabId The id of the tab
  */
 function forgetTab(tabId) {
-  console.log('forgetting tab', tabId);
+  Utils.ConsoleLogging(['forgetting tab', tabId]);
   activeMatchers.removeTab(tabId);
   delete tabData[tabId];
   delete temporarySocialWidgetUnblock[tabId];
@@ -576,7 +576,7 @@ function _isTabAnExtension(tabId){
  * @private
  */
 function _askUserToWhitelist(tabId, whitelistDomains, englishName){
-  console.log('asking user to whitelist');
+  Utils.ConsoleLogging(['asking user to whitelist']);
   var port = chrome.tabs.connect(tabId);
   port.postMessage({action: 'attemptWhitelist', whitelistDomain:englishName, currentDomain:getHostForTab(tabId)});
   port.onMessage.addListener(function(msg){
@@ -584,7 +584,7 @@ function _askUserToWhitelist(tabId, whitelistDomains, englishName){
       if(msg.action === "allow_all"){
         saveAction('noaction', whitelistDomains[i]);
         reloadTab(tabId);
-      } 
+      }
       if(msg.action === "allow_once"){
         //allow blag on this site only
         saveAction('noaction', whitelistDomains[i], getHostForTab(tabId));
@@ -592,7 +592,7 @@ function _askUserToWhitelist(tabId, whitelistDomains, englishName){
       }
       if(msg.action === "never"){
         //block third party domain always
-        console.log('never allow');
+        Utils.ConsoleLogging(['never allow']);
         saveAction('cookieblock', whitelistDomains[i]);
         reloadTab(tabId);
       }
@@ -684,7 +684,7 @@ function isSocialWidgetTemporaryUnblock(tabId, url, frameId) {
   var frameHost = extractHostFromURL(getFrameUrl(tabId, frameId));
   var frameExcept = (exceptions.indexOf(frameHost) != -1);
 
-  //console.log((requestExcept || frameExcept) + " : exception for " + url);
+  //Utils.ConsoleLogging([(requestExcept || frameExcept) , " : exception for " , url]);
 
   return (requestExcept || frameExcept);
 }

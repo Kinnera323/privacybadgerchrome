@@ -33,7 +33,6 @@
  * You should have received a copy of the GNU General Public License
  * along with Adblock Plus.  If not, see <http://www.gnu.org/licenses/>.
  */
-var disabledSites = localStorage.disabledSites;
 require.scopes["utils"] = (function() {
 
 var exports = {};
@@ -188,9 +187,10 @@ var Utils = exports.Utils = {
    * @returns {Boolean} true if disabled
    **/
   isPrivacyBadgerEnabled: function(origin){
-    if(disabledSites){
-      if(disabledSites[origin]){
-        return false;
+    if(localStorage.disabledSites && JSON.parse(localStorage.disabledSites).length > 0){
+      var sites = JSON.parse(localStorage.disabledSites);
+      for(var i = 0; i < sites.length; i++){
+        if(sites[i] === origin){ return false; }
       }
     }
     return true;
@@ -204,19 +204,24 @@ var Utils = exports.Utils = {
   },
 
   /**
+  * Check if ConsoleLogging functionality is enabled
+  **/
+  isConsoleLoggingEnabled: function(){
+    return JSON.parse(localStorage.ConsoleLoggingEnabled);
+  },
+  /**
    * add an origin to the disabled sites list
    *
    * @param {String} origin The origin to disable the PB for
    **/
   disablePrivacyBadgerForOrigin: function(origin){
-    if(disabledSites === undefined){
-      disabledSites = new Object();
-      disabledSites[origin] = true;
-      localStorage.disabledSites = JSON.stringify(disabledSites);
+    if(localStorage.disabledSites === undefined){
+      localStorage.disabledSites = JSON.stringify([origin]);
       return;
     }
-    if(!disabledSites[origin]){
-      disabledSites[origin] = true;
+    var disabledSites = JSON.parse(localStorage.disabledSites);
+    if(disabledSites.indexOf(origin) < 0){
+      disabledSites.push(origin);
       localStorage.disabledSites = JSON.stringify(disabledSites);
     }
   },
@@ -227,15 +232,30 @@ var Utils = exports.Utils = {
    * @param {String} origin The origin to disable the PB for
    **/
   enablePrivacyBadgerForOrigin: function(origin){
-    if(disabledSites === undefined){
+    if(localStorage.disabledSites === undefined){
       return;
     }
-    if(disabledSites[origin]){
-      delete disabledSites[origin];
+    var disabledSites = JSON.parse(localStorage.disabledSites);
+    var idx = disabledSites.indexOf(origin);
+    if(idx >= 0){
+      Utils.removeElementFromArray(disabledSites, idx);
       localStorage.disabledSites = JSON.stringify(disabledSites);
     }
   },
 
+  /**
+  * ConsoleLogging is done only here
+  **/
+  ConsoleLogging: function(value){
+    if(localStorage.ConsoleLoggingEnabled == "true"){
+      text = '';
+      for(index=0;index < value.length ; index++){
+        text += value[index];
+        text += ' ';
+      }
+      console.log(text);
+    }
+  },
   /**
    * Get a random number in the inclusive range min..max
    *
@@ -288,8 +308,8 @@ var Utils = exports.Utils = {
     var maxSymbolsGuess =  maxCharCode - minCharCode + 1;
     var maxCombinations = Math.pow(maxSymbolsGuess, str.length);
     var maxBits = Math.log(maxCombinations)/Math.LN2;
-    /* console.log("Local storage item length:", str.length, "# symbols guess:", maxSymbolsGuess,
-      "Max # Combinations:", maxCombinations, "Max bits:", maxBits) */
+    /* Utils.ConsoleLogging(["Local storage item length:", str.length, "# symbols guess:", maxSymbolsGuess,
+      "Max # Combinations:", maxCombinations, "Max bits:", maxBits]) */
     return maxBits;  // May return Infinity when the content is too long.
   },
 
@@ -307,10 +327,10 @@ var Utils = exports.Utils = {
     for (var lsKey in lsItems) {
       // send both key and value to entropy estimation
       lsItem = lsItems[lsKey];
-      // console.log("Checking localstorage item", lsKey, lsItem);
+      // Utils.ConsoleLogging(["Checking localstorage item", lsKey, lsItem]);
       estimatedEntropy += Utils.estimateMaxEntropy(lsKey + lsItem);
       if (estimatedEntropy > LOCALSTORAGE_ENTROPY_THRESHOLD){
-        // console.log("Found hi-entropy localStorage: ", estimatedEntropy, " bits, key: ", lsKey);
+        // Utils.ConsoleLogging(["Found hi-entropy localStorage: ", estimatedEntropy, " bits, key: ", lsKey]);
         return true;
       }
     }

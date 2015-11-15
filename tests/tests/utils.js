@@ -27,7 +27,7 @@
       ok(true, "xhr calls callback");
       ok(err === null, "there was no error");
       ok(resp === "test passed\n", "got response text");
-      console.log(resp);
+      Utils.ConsoleLogging([resp]);
       start();
     });
   });
@@ -53,13 +53,13 @@
 
   test("disable/enable privacy badger for origin", function(){
     var parsed = function(){return JSON.parse(localStorage.disabledSites)};
-    var origLength =  Object.keys(parsed).length || 0
+    var origLength = parsed() && parsed().length || 0
 
     Utils.disablePrivacyBadgerForOrigin('foo.com');
-    ok(Object.keys(parsed()).length == (origLength + 1), "one more disabled site");
+    ok(parsed().length == (origLength + 1), "one more disabled site");
 
     Utils.enablePrivacyBadgerForOrigin('foo.com');
-    ok(Object.keys(parsed()).length == origLength  , "one less disabled site");
+    ok(parsed().length == origLength, "one less disabled site");
   });
 
   test("getRandom", function(){

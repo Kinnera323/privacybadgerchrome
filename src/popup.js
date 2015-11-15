@@ -1,7 +1,7 @@
 /*
  * This file is part of Privacy Badger <https://www.eff.org/privacybadger>
  * Copyright (C) 2014 Electronic Frontier Foundation
- * Derived from Adblock Plus 
+ * Derived from Adblock Plus
  * Copyright (C) 2006-2013 Eyeo GmbH
  *
  * Privacy Badger is free software: you can redistribute it and/or modify
@@ -73,8 +73,8 @@ function closeOverlay() {
  * Init function. Showing/hiding popup.html elements and setting up event handler
  */
 function init() {
-  console.log("Initializing popup.js");
-  
+  Utils.ConsoleLogging(["Initializing popup.js"]);
+
   $("#firstRun").hide();
   var seenComic = JSON.parse(localStorage.getItem("seenComic")) || false;
   if (!seenComic) {
@@ -158,7 +158,7 @@ function send_error(message) {
      }
   }
   var out_data = JSON.stringify(out);
-  console.log(out_data);
+  Utils.ConsoleLogging([out_data]);
   var sendReport = $.ajax({
     type: "POST",
     url: "https://privacybadger.org/reporting",
@@ -217,12 +217,12 @@ function deactive_site(){
  */
 function revertDomainControl(e){
   $elm = $(e.target).parent();
-  console.log('revert to privacy badger control for', $elm);
+  Utils.ConsoleLogging(['revert to privacy badger control for', $elm]);
   var origin = $elm.data('origin');
   var original_action = $elm.data('original-action');
   var tabId = parseInt($('#associatedTab').attr('data-tab-id'), 10);
-  var stores = {'block': 'userRed', 
-                'cookieblock': 'userYellow', 
+  var stores = {'block': 'userRed',
+                'cookieblock': 'userYellow',
                 'noaction': 'userGreen'};
   var filter = "||" + origin + "^$third-party";
   var siteFilter = "@@||" + origin + "^$third-party,domain=" + getHostForTab(tabId);
@@ -232,7 +232,7 @@ function revertDomainControl(e){
   var defaultAction = getPresumedAction(origin);
   var selectorId = "#"+ defaultAction +"-" + origin.replace(/\./g,'-');
   var selector =   $(selectorId);
-  console.log('selector', selector);
+  Utils.ConsoleLogging(['selector', selector]);
   selector.click();
   $elm.removeClass('userset');
   reloadTab(tabId);
@@ -243,7 +243,7 @@ function revertDomainControl(e){
  * Toggles the icon, not used
  */
 function toggleEnabled() {
-  console.log("Refreshing icon and context menu");
+  Utils.ConsoleLogging(["Refreshing icon and context menu"]);
   refreshIconAndContextMenu(tab);
 }
 
@@ -258,7 +258,7 @@ function toggleEnabled() {
  * @private
  */
 function _addOriginHTML(origin, printable, action, flag, multiTLD) {
-  //console.log("Popup: adding origin HTML for " + origin);
+  //Utils.ConsoleLogging("Popup: adding origin HTML for " + origin);
   var classes = ["clicker","tooltip"];
   var feedTheBadgerTitle = '';
   if (action.indexOf("user") === 0) {
@@ -272,7 +272,7 @@ function _addOriginHTML(origin, printable, action, flag, multiTLD) {
   var classText = 'class="' + classes.join(" ") + '"';
   var flagText = "";
   if (flag) {
-    flagText = "<div id='dnt-compliant'>" + 
+    flagText = "<div id='dnt-compliant'>" +
       "<a target=_blank href='https://www.eff.org/privacybadger#faq--I-am-an-online-advertising-/-tracking-company.--How-do-I-stop-Privacy-Badger-from-blocking-me?'>" +
       "<img src='/icons/dnt-16.png' title='This domain promises not to track you.'></a></div>";
   }
@@ -281,9 +281,9 @@ function _addOriginHTML(origin, printable, action, flag, multiTLD) {
     multiText = " ("+multiTLD +" subdomains)";
   }
 
-  return printable + '<div ' + classText + '" data-origin="' + origin + '" tooltip="' + _badgerStatusTitle(action) + '" data-original-action="' + action + '"><div class="origin" >' +
+  return printable + '<div ' + classText + '" data-origin="' + origin + '" tooltip="' + _badgerStatusTitle(action, origin) + '" data-original-action="' + action + '"><div class="origin" >' +
      flagText + _trim(origin + multiText,30) + '</div>' + _addToggleHtml(origin, action) + '<div class="honeybadgerPowered tooltip" tooltip="'+ feedTheBadgerTitle + '"></div><img class="tooltipArrow" src="/icons/badger-tb-arrow.png"><div class="clear"></div><div class="tooltipContainer"></div></div>';
-  
+
 }
 
 /**
@@ -309,19 +309,19 @@ function _trim(str,max){
  * @returns {string} The description, I18Ned
  * @private
  */
-function _badgerStatusTitle(action){
-  var prefix = "";
+function _badgerStatusTitle(action , origin){
+
   var status_block = i18n.getMessage("badger_status_block");
   var status_cookieblock = i18n.getMessage("badger_status_cookieblock");
   var status_noaction = i18n.getMessage("badger_status_noaction");
 
-  var statusMap = { 
+  var statusMap = {
     block:        status_block,
     cookieblock:  status_cookieblock,
     noaction:     status_noaction
   };
 
-  return prefix + statusMap[action];
+  return  statusMap[action] + origin ;
 }
 
 /**
@@ -367,7 +367,7 @@ function _checked(name, action){
  * @param {String} status New status to set, optional
  */
 function toggleBlockedStatus(elt,status) {
-  console.log('toggle blocked status', elt, status);
+  Utils.ConsoleLogging(['toggle blocked status', elt, status]);
   if(status){
     $(elt).removeClass("block cookieblock noaction").addClass(status);
     $(elt).addClass("userset");
@@ -381,9 +381,9 @@ function toggleBlockedStatus(elt,status) {
     $(elt).toggleClass("block");
     $(elt).toggleClass("cookieblock");
   }
-  else 
+  else
     $(elt).toggleClass("cookieblock");
-  if ($(elt).hasClass(originalAction) || (originalAction == 'noaction' && !($(elt).hasClass("block") || 
+  if ($(elt).hasClass(originalAction) || (originalAction == 'noaction' && !($(elt).hasClass("block") ||
                                                                             $(elt).hasClass("cookieblock"))))
     $(elt).removeClass("userset");
   else
@@ -460,7 +460,7 @@ function isDomainWhitelisted(action, origin){
  * @param {Integer} tabId The id of the tab
  */
 function refreshPopup(tabId) {
-  console.log("Refreshing popup for tab id " + tabId);
+  Utils.ConsoleLogging(["Refreshing popup for tab id ", tabId]);
   //TODO this is calling get action and then being used to call get Action
   var origins = getAllOriginsForTab(tabId);
   if (!origins || origins.length === 0) {
@@ -470,7 +470,7 @@ function refreshPopup(tabId) {
     return;
   }
   var printable = '<div id="associatedTab" data-tab-id="' + tabId + '"></div>';
-  printable = printable + 
+  printable = printable +
     '<div class="keyContainer">'+
     '<div class="key">'+
     '<img class="tooltip" src="/icons/UI-icons-red.png" tooltip="Move the slider left to block a domain.">'+
@@ -487,9 +487,9 @@ function refreshPopup(tabId) {
     var origin = origins[i];
     // todo: gross hack, use templating framework
     var action = getAction(tabId, origin);
-    if(!action){ 
+    if(!action){
         nonTracking.push(origin);
-        continue; 
+        continue;
     }
     else {
       if (action.includes("user")){
@@ -511,7 +511,7 @@ function refreshPopup(tabId) {
     printable = _addOriginHTML(origin, printable, action, flag);
   }
   for (key in compressedOrigins){
-    var flag2 = isDomainWhitelisted(action, origin); 
+    var flag2 = isDomainWhitelisted(action, origin);
     printable = _addOriginHTML( key, printable, compressedOrigins[key]['action'], flag2, compressedOrigins[key]['subs'].length);
   }
   var nonTrackerText = i18n.getMessage("non_tracker");
@@ -551,7 +551,7 @@ function refreshPopup(tabId) {
     });
   });
   adjustNoInitialBlockingLink();
-  console.log("Done refreshing popup");
+  Utils.ConsoleLogging(["Done refreshing popup"]);
 }
 
 
@@ -562,14 +562,15 @@ function refreshPopup(tabId) {
  */
 function updateOrigin(event){
   var $elm = $('label[for="' + event.currentTarget.id + '"]');
-  console.log('updating origin for', $elm);
+  Utils.ConsoleLogging(['updating origin for', $elm]);
   var $switchContainer = $elm.parents('.switch-container').first();
   var $clicker = $elm.parents('.clicker').first();
   var action = $elm.data('action');
   $switchContainer.removeClass('block cookieblock noaction').addClass(action);
   toggleBlockedStatus($clicker, action);
-  $clicker.attr('tooltip', _badgerStatusTitle(action));
-  $clicker.children('.tooltipContainer').html(_badgerStatusTitle(action));
+  var origin = $clicker.data('origin');
+  $clicker.attr('tooltip', _badgerStatusTitle(action, origin));
+  $clicker.children('.tooltipContainer').html(_badgerStatusTitle(action, origin));
   hideNoInitialBlockingLink();
 }
 
@@ -613,7 +614,7 @@ function displayTooltip(event){
     $container.show();
     $container.siblings('.tooltipArrow').show();
   },tooltipDelay);
-  $elm.on('mouseleave', function(){clearTimeout(displayTipTimer);}); 
+  $elm.on('mouseleave', function(){clearTimeout(displayTipTimer);});
 }
 
 /**
@@ -654,7 +655,7 @@ function syncSettingsDict(settingsDict) {
       reloadNeeded = tabId; // js question: slower than "if (!reloadNeeded) reloadNeeded = true"?
                            // would be fun to check with jsperf.com
   }
-  console.log("Finished syncing. Now refreshing popup.");
+  Utils.ConsoleLogging(["Finished syncing. Now refreshing popup."]);
   // the popup needs to be refreshed to display current results
   refreshPopup(tabId);
   return reloadNeeded;
@@ -703,7 +704,7 @@ function buildSettingsDict() {
  */
 function syncUISelections() {
   var settingsDict = buildSettingsDict();
-  console.log("Sync of userset options: " + JSON.stringify(settingsDict));
+  Utils.ConsoleLogging(["Sync of userset options: " , JSON.stringify(settingsDict)]);
   var tabId = syncSettingsDict(settingsDict);
   if (tabId){
     reloadTab(tabId);
@@ -712,14 +713,13 @@ function syncUISelections() {
 
 document.addEventListener('DOMContentLoaded', function () {
   chrome.tabs.getSelected(null, function(tab) {
-    console.log("from addEventListener");
+    Utils.ConsoleLogging(["from addEventListener"]);
     refreshPopup(tab.id);
   });
 });
 
 window.addEventListener('unload', function() {
-  console.log("Starting to unload popup");
+  Utils.ConsoleLogging(["Starting to unload popup"]);
   syncUISelections();
-  console.log("unloaded popup");
+  Utils.ConsoleLogging(["unloaded popup"]);
 });
-
